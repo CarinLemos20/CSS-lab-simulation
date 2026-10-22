@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Experiment ID: EXP_RSA_KCA
 ## Experiment Name: RSA Cryptosystem, Factoring Challenge & Chosen Ciphertext Attack
 **Group**: Cryptography - RSA Attacks  
@@ -44,3 +45,6 @@ None (Self-contained HTML5, CSS3, JavaScript - vanilla implementation without ex
 * Dynamic zoom controls (+ and -) for adjusting font size.
 * Share button to copy the experiment URL to the clipboard.
 * Mobile-responsive layout supporting desktop, tablet, and mobile viewport sizes.
+=======
+# CSS-lab-simulation
+>>>>>>> c9df3f11b0617656f6618b46d51093bbde88b8ee
