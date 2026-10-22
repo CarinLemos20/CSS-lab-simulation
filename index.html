@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSA Virtual Lab &middot; Cryptography & Attacks</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="top-bar">
+        <div class="header-left">
+            <button class="icon-btn back-btn" id="btn-header-back" title="Back to Overview">&#8592;</button>
+            <div class="header-titles">
+                <h1>Computer Science Lab Manual</h1>
+                <p>Cryptography &middot; RSA Algorithm, Factoring Challenge & Attacks</p>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="share-btn" id="btn-share">&#128279; Share</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <main class="content-area" id="main-content">
+            <div class="toolbar">
+                <button class="action-btn blue-btn" id="btn-read-aloud">&#128266; Read Aloud</button>
+                <select class="dropdown" id="select-speech-speed" title="Reading Speed">
+                    <option value="0.8">Speed: 0.8x</option>
+                    <option value="1.0" selected>Speed: 1.0x</option>
+                    <option value="1.2">Speed: 1.2x</option>
+                </select>
+                <select class="dropdown" id="select-speech-voice" title="Speech Voice">
+                    <option value="default">Default Voice</option>
+                </select>
+                <div class="zoom-controls">
+                    <button class="icon-btn" id="btn-zoom-out" title="Decrease font size">-</button>
+                    <button class="icon-btn" id="btn-zoom-in" title="Increase font size">+</button>
+                </div>
+            </div>
+
+            <!-- TAB 1: AIM -->
+            <div id="aim" class="tab-content">
+                <h2>Aim of the Experiment</h2>
+                <div class="info-card">
+                    <p>To implement, analyze, and evaluate the <strong>RSA Public-Key Cryptosystem</strong>, explore the mathematical hardness of <strong>prime factorization</strong> of the modulus <em>n</em>, and demonstrate the vulnerability of unpadded ("textbook") RSA against a <strong>Chosen Ciphertext Attack (CCA)</strong>.</p>
+                </div>
+
+                <h3>Key Objectives of this Experiment</h3>
+                <ul class="styled-list">
+                    <li>Understand the foundational number-theoretic concepts: prime numbers, Euler's totient function &phi;(<em>n</em>), coprimality, and modular multiplicative inverses.</li>
+                    <li>Experience the <strong>Factoring Challenge</strong>: observe firsthand why RSA security depends entirely on the secrecy of primes <em>p</em> and <em>q</em>, and how knowing <em>n</em> allows recovering the private key once factored.</li>
+                    <li>Step through key generation, encryption of a user-defined plaintext, and decryption of the ciphertext.</li>
+                    <li>Demonstrate the multiplicative homomorphic property of unpadded RSA, enabling an adversary to decrypt intercepted ciphertexts using a chosen ciphertext attack.</li>
+                    <li>Learn the industry-standard mitigation strategies, specifically Optimal Asymmetric Encryption Padding (OAEP - PKCS #1 v2.1).</li>
+                </ul>
+
+                <div class="action-card">
+                    <h4>Ready to begin the experiment?</h4>
+                    <p>You can proceed to the theoretical background or jump straight into the interactive simulation.</p>
+                    <div class="card-buttons">
+                        <button class="action-btn blue-btn btn-nav-trigger" data-target="simulation">&#128187; Go to Simulation</button>
+                        <button class="action-btn btn-nav-trigger" data-target="theory">&#128214; Read Theory</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: THEORY -->
+            <div id="theory" class="tab-content">
+                <h2>Theoretical Background</h2>
+                
+                <section class="theory-section">
+                    <h3>1. Introduction to RSA Cryptosystem</h3>
+                    <p>Invented in 1977 by Ron Rivest, Adi Shamir, and Leonard Adleman, the <strong>RSA algorithm</strong> is one of the first asymmetric public-key cryptosystems widely used for secure electronic data transmission. Unlike symmetric ciphers (such as AES) where both parties share the same secret key, RSA uses a public key for encryption and a distinct private key for decryption.</p>
+                </section>
+
+                <section class="theory-section">
+                    <h3>2. Mathematical Principles & Key Generation</h3>
+                    <div class="math-box">
+                        <p><strong>Step 1:</strong> Select two distinct prime numbers, <em>p</em> and <em>q</em>.</p>
+                        <p><strong>Step 2:</strong> Compute their product, the modulus: <em>n</em> = <em>p</em> &times; <em>q</em>. The length of <em>n</em> (in bits) is the key length.</p>
+                        <p><strong>Step 3:</strong> Compute Euler's totient function: &phi;(<em>n</em>) = (<em>p</em> &minus; 1)(<em>q</em> &minus; 1).</p>
+                        <p><strong>Step 4:</strong> Select a public exponent <em>e</em> such that 1 &lt; <em>e</em> &lt; &phi;(<em>n</em>) and gcd(<em>e</em>, &phi;(<em>n</em>)) = 1 (coprime to &phi;(<em>n</em>)).</p>
+                        <p><strong>Step 5:</strong> Compute the private exponent <em>d</em> as the modular multiplicative inverse of <em>e</em> modulo &phi;(<em>n</em>):</p>
+                        <p class="formula-line"><em>d</em> &times; <em>e</em> &equiv; 1 (mod &phi;(<em>n</em>)) &emsp;&rArr;&emsp; <em>d</em> = <em>e</em><sup>&minus;1</sup> mod &phi;(<em>n</em>)</p>
+                    </div>
+                    <p>The <strong>Public Key</strong> consists of the pair <code>(e, n)</code> and is openly shared with the public. The <strong>Private Key</strong> consists of <code>(d, n)</code> and must remain confidential.</p>
+                </section>
+
+                <section class="theory-section">
+                    <h3>3. Encryption and Decryption</h3>
+                    <p>To encrypt a plaintext message <em>M</em> (represented as an integer where 0 &le; <em>M</em> &lt; <em>n</em>):</p>
+                    <div class="math-box formula-line">
+                        <em>C</em> = <em>M</em><sup><em>e</em></sup> mod <em>n</em>
+                    </div>
+                    <p>The receiver decrypts the ciphertext <em>C</em> using their private exponent <em>d</em>:</p>
+                    <div class="math-box formula-line">
+                        <em>M</em> = <em>C</em><sup><em>d</em></sup> mod <em>n</em>
+                    </div>
+                    <p><strong>Correctness Proof:</strong> By Euler's Theorem, since <em>e</em> &times; <em>d</em> &equiv; 1 (mod &phi;(<em>n</em>)), there exists an integer <em>k</em> such that <em>e</em> &times; <em>d</em> = <em>k</em>&phi;(<em>n</em>) + 1. Hence:</p>
+                    <p class="formula-line"><em>C</em><sup><em>d</em></sup> &equiv; (<em>M</em><sup><em>e</em></sup>)<sup><em>d</em></sup> &equiv; <em>M</em><sup><em>k</em>&phi;(<em>n</em>) + 1</sup> &equiv; (<em>M</em><sup>&phi;(<em>n</em>)</sup>)<sup><em>k</em></sup> &times; <em>M</em> &equiv; 1<sup><em>k</em></sup> &times; <em>M</em> &equiv; <em>M</em> (mod <em>n</em>).</p>
+                </section>
+
+                <section class="theory-section">
+                    <h3>4. The Prime Factorization Problem</h3>
+                    <p>The security of RSA relies on the computational asymmetry of multiplication vs. factorization: multiplying two primes <em>p</em> and <em>q</em> is instantaneous, but finding <em>p</em> and <em>q</em> given only <em>n</em> is computationally intractable for sufficiently large primes (e.g., 2048 to 4096 bits).</p>
+                    <div class="alert-box">
+                        <strong>Security Principle:</strong> If an eavesdropper can factor the public modulus <em>n</em> into <em>p</em> and <em>q</em>, they can immediately compute &phi;(<em>n</em>) = (<em>p</em> &minus; 1)(<em>q</em> &minus; 1), and then calculate Bob's secret private key <em>d</em> = <em>e</em><sup>&minus;1</sup> mod &phi;(<em>n</em>).
+                    </div>
+                </section>
+
+                <section class="theory-section">
+                    <h3>5. The Chosen Ciphertext Attack (CCA) on Textbook RSA</h3>
+                    <p>Textbook RSA exhibits a <strong>multiplicative homomorphic property</strong>:</p>
+                    <div class="math-box formula-line">
+                        (<em>M</em><sub>1</sub><sup><em>e</em></sup> mod <em>n</em>) &times; (<em>M</em><sub>2</sub><sup><em>e</em></sup> mod <em>n</em>) &equiv; (<em>M</em><sub>1</sub> &times; <em>M</em><sub>2</sub>)<sup><em>e</em></sup> mod <em>n</em>
+                    </div>
+                    <p>If an attacker intercepts ciphertext <em>C</em> = <em>M</em><sup><em>e</em></sup> mod <em>n</em>, they can choose a random integer <em>R</em> (where gcd(<em>R</em>, <em>n</em>) = 1) and create a blinded ciphertext:</p>
+                    <p class="formula-line"><em>C'</em> = (<em>C</em> &times; <em>R</em><sup><em>e</em></sup>) mod <em>n</em></p>
+                    <p>If the attacker convinces Bob (or a decryption oracle) to decrypt <em>C'</em>, Bob computes:</p>
+                    <p class="formula-line"><em>M'</em> = (<em>C'</em>)<sup><em>d</em></sup> mod <em>n</em> = (<em>M</em> &times; <em>R</em>) mod <em>n</em></p>
+                    <p>The attacker then calculates <em>R</em><sup>&minus;1</sup> mod <em>n</em> and recovers the secret plaintext <em>M</em> without knowing the private key <em>d</em>:</p>
+                    <p class="formula-line"><em>M</em> = (<em>M'</em> &times; <em>R</em><sup>&minus;1</sup>) mod <em>n</em></p>
+                </section>
+            </div>
+
+            <!-- TAB 3: OBJECTIVE -->
+            <div id="objective" class="tab-content">
+                <h2>Learning Objectives</h2>
+                <p>After completing this virtual lab experiment, students will be able to:</p>
+                
+                <div class="objective-grid">
+                    <div class="obj-card">
+                        <div class="obj-number">1</div>
+                        <h4>Factorization Analysis</h4>
+                        <p>Analyze the mathematical vulnerability of small RSA moduli by successfully solving the dynamic <strong>Prime Factorization Challenge</strong> ($n = p \times q$).</p>
+                    </div>
+                    <div class="obj-card">
+                        <div class="obj-number">2</div>
+                        <h4>Key Generation Mechanics</h4>
+                        <p>Compute Euler's totient function &phi;(<em>n</em>) and derive the private decryption exponent <em>d</em> using the Extended Euclidean Algorithm for modular inverse.</p>
+                    </div>
+                    <div class="obj-card">
+                        <div class="obj-number">3</div>
+                        <h4>Encryption & Decryption</h4>
+                        <p>Execute modular exponentiation to encrypt plaintext messages and decrypt ciphertexts according to the core RSA algorithms.</p>
+                    </div>
+                    <div class="obj-card">
+                        <div class="obj-number">4</div>
+                        <h4>Vulnerability Demonstration</h4>
+                        <p>Demonstrate how the algebraic multiplicativity of unpadded RSA enables a <strong>Chosen Ciphertext Attack</strong> to recover original plaintext without knowledge of <em>d</em>.</p>
+                    </div>
+                </div>
+
+                <div class="action-card" style="margin-top: 30px;">
+                    <button class="action-btn blue-btn btn-nav-trigger" data-target="procedure">&#128221; View Procedure</button>
+                    <button class="action-btn blue-btn btn-nav-trigger" data-target="simulation">&#128187; Start Simulation</button>
+                </div>
+            </div>
+
+            <!-- TAB 4: PROCEDURE -->
+            <div id="procedure" class="tab-content">
+                <h2>Step-by-Step Experimental Procedure</h2>
+                <p>Follow these steps systematically in the interactive simulation module:</p>
+
+                <ol class="procedure-list">
+                    <li>
+                        <strong>Observe the Dynamic Modulus:</strong>
+                        <p>When the simulation loads, a random semiprime modulus <em>n</em> is generated and displayed. Note that a different <em>n</em> is generated on every reload.</p>
+                    </li>
+                    <li>
+                        <strong>Solve the Factoring Challenge (Mandatory):</strong>
+                        <p>To simulate cracking the key or uncovering the underlying factors, calculate the two prime factors <em>p</em> and <em>q</em> such that <em>p</em> &times; <em>q</em> = <em>n</em>. Enter both values in the input fields and click <strong>Verify Factors</strong>. You cannot proceed to the subsequent steps until this challenge is solved.</p>
+                    </li>
+                    <li>
+                        <strong>Calculate Euler's Totient &phi;(<em>n</em>):</strong>
+                        <p>Using your discovered primes <em>p</em> and <em>q</em>, compute &phi;(<em>n</em>) = (<em>p</em> &minus; 1) &times; (<em>q</em> &minus; 1). Enter your answer and verify it.</p>
+                    </li>
+                    <li>
+                        <strong>Derive the Private Key Exponent <em>d</em>:</strong>
+                        <p>Review Bob's public exponent <em>e</em> (chosen coprime to &phi;(<em>n</em>)). Calculate the private exponent <em>d</em> such that (<em>d</em> &times; <em>e</em>) mod &phi;(<em>n</em>) = 1. Enter <em>d</em> to unlock Phase 2.</p>
+                    </li>
+                    <li>
+                        <strong>Encrypt a Secret Message (Alice &rarr; Bob):</strong>
+                        <p>In Phase 2, select an integer plaintext message <em>M</em> within the valid range (2 &le; <em>M</em> &lt; <em>n</em>). Compute the ciphertext <em>C</em> = <em>M</em><sup><em>e</em></sup> mod <em>n</em> and submit it.</p>
+                    </li>
+                    <li>
+                        <strong>Decrypt the Intercepted Ciphertext (Bob):</strong>
+                        <p>In Phase 3, simulate Bob decrypting the transmitted ciphertext using private key <em>d</em>: <em>M</em> = <em>C</em><sup><em>d</em></sup> mod <em>n</em>. Confirm that the decrypted message matches Alice's original plaintext.</p>
+                    </li>
+                    <li>
+                        <strong>Execute the Chosen Ciphertext Attack:</strong>
+                        <p>In Phase 4, act as an adversary intercepting <em>C</em>. Choose a blinding multiplier <em>R</em>, construct <em>C'</em> = (<em>C</em> &times; <em>R</em><sup><em>e</em></sup>) mod <em>n</em>, send it to Bob's decryption oracle to obtain <em>M'</em>, and recover the original plaintext <em>M</em> without <em>d</em>.</p>
+                    </li>
+                </ol>
+
+                <div class="action-card">
+                    <button class="action-btn blue-btn btn-nav-trigger" data-target="simulation">&#128187; Proceed to Interactive Simulation &rarr;</button>
+                </div>
+            </div>
+
+            <!-- TAB 5: SIMULATION (Default active tab) -->
+            <div id="simulation" class="tab-content active">
+                <div class="sim-header-row">
+                    <div>
+                        <h2>Interactive Simulation: RSA in Action</h2>
+                        <p><strong>Scenario:</strong> Alice wants to send Bob a secret message. Bob has published his public key modulus <em>n</em>. Let's explore RSA key setup, the factoring challenge, message exchange, and the Chosen Ciphertext Attack.</p>
+                    </div>
+                    <div class="sim-controls-top">
+                        <button id="btn-regenerate-n" class="action-btn" title="Generate a different random modulus immediately">&#127922; New Random Modulus</button>
+                    </div>
+                </div>
+
+                <!-- Phase 1: Key Generation & Factoring Challenge -->
+                <div class="sim-box" id="phase1">
+                    <div class="phase-badge">Phase 1: Key Generation &amp; Factoring Challenge</div>
+                    
+                    <!-- Factoring Challenge Container -->
+                    <div class="challenge-card" id="factoring-challenge-box">
+                        <div class="challenge-header">
+                            <span class="challenge-tag">&#128273; Step 1a: Factoring Challenge</span>
+                            <span class="dynamic-tag">Randomly Generated</span>
+                        </div>
+                        <p>Bob has published his public RSA modulus:</p>
+                        <div class="modulus-highlight">
+                            <span class="modulus-label">Public Modulus:</span>
+                            <span class="modulus-val" id="display-target-n">33</span>
+                        </div>
+                        <p class="challenge-instructions">
+                            <strong>Challenge:</strong> The security of RSA depends on keeping the prime factors of <em>n</em> secret. To proceed, factor the displayed modulus <em>n</em> into its two distinct prime numbers, <em>p</em> and <em>q</em> (such that <em>n</em> = <em>p</em> &times; <em>q</em>). <strong>You must solve this challenge before you can proceed!</strong>
+                        </p>
+                        
+                        <div class="input-group">
+                            <label for="input-p">Prime <em>p</em>:</label>
+                            <input type="number" id="input-p" placeholder="Factor p" min="2">
+                            <label for="input-q">Prime <em>q</em>:</label>
+                            <input type="number" id="input-q" placeholder="Factor q" min="2">
+                            <button id="btn-check-factors" class="action-btn blue-btn">Verify Factors</button>
+                            <button id="btn-toggle-hint" class="action-btn" type="button">&#128161; Hint</button>
+                        </div>
+                        <p id="msg-factors" class="feedback-msg"></p>
+                        <div id="hint-box" class="hint-panel" style="display: none;">
+                            <p id="hint-text">Check divisibility by small prime numbers (3, 5, 7, 11, 13...).</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 1b: Euler Totient -->
+                    <div class="sub-step disabled-section" id="section-phi">
+                        <h4>Step 1b: Calculate Euler's Totient &phi;(<em>n</em>)</h4>
+                        <p>Now that Bob's prime factors are known (<strong><em>p</em> = <span id="label-p">?</span></strong>, <strong><em>q</em> = <span id="label-q">?</span></strong>):</p>
+                        <div class="input-group">
+                            <label for="input-phi">Calculate &phi;(<em>n</em>) = (<em>p</em> &minus; 1)(<em>q</em> &minus; 1): </label>
+                            <input type="number" id="input-phi" placeholder="Enter &phi;(n)">
+                            <button id="btn-check-phi" class="action-btn blue-btn">Check &phi;(n)</button>
+                        </div>
+                        <p id="msg-phi" class="feedback-msg"></p>
+                    </div>
+
+                    <!-- Step 1c: Private Key d -->
+                    <div class="sub-step disabled-section" id="section-d">
+                        <h4>Step 1c: Bob Chooses Public Exponent <em>e</em> &amp; Calculates Private Key <em>d</em></h4>
+                        <p>Bob chooses public exponent <strong><em>e</em> = <span id="display-e">?</span></strong> (since gcd(<em>e</em>, &phi;(<em>n</em>)) = 1).</p>
+                        <div class="input-group">
+                            <label for="input-d">Calculate private key <em>d</em> where (<em>d</em> &times; <span id="label-e-in-d">e</span>) mod <span id="label-phi-in-d">&phi;(n)</span> = 1: </label>
+                            <input type="number" id="input-d" placeholder="Enter d">
+                            <button id="btn-check-d" class="action-btn blue-btn">Check d</button>
+                            <button id="btn-hint-d" class="action-btn" type="button">&#128161; Hint for d</button>
+                        </div>
+                        <p id="msg-d" class="feedback-msg"></p>
+                        <div id="hint-d-box" class="hint-panel" style="display: none;">
+                            <p id="hint-d-text"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Phase 2: Encryption -->
+                <div class="sim-box disabled-section" id="phase2">
+                    <div class="phase-badge">Phase 2: Alice Encrypts the Message</div>
+                    <h3>Step 2: Alice Encrypts the Message</h3>
+                    <p>Bob publicly shares his public key: <strong>(<em>e</em> = <span id="display-e-phase2">?</span>, <em>n</em> = <span id="display-n-phase2">?</span>)</strong> with Alice.</p>
+                    
+                    <div class="input-group">
+                        <label for="input-m">Choose Plaintext Message (<em>M</em>) between 2 and <span id="max-m-label">32</span>: </label>
+                        <input type="number" id="input-m" placeholder="e.g. 5" min="2">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="input-c">Calculate Ciphertext <em>C</em> = <em>M</em><sup><span id="display-e-exp">3</span></sup> mod <span id="display-n-mod">33</span>: </label>
+                        <input type="number" id="input-c" placeholder="Enter C">
+                        <button id="btn-check-c" class="action-btn blue-btn">Encrypt &amp; Send</button>
+                    </div>
+                    <p id="msg-c" class="feedback-msg"></p>
+                </div>
+
+                <!-- Phase 3: Decryption -->
+                <div class="sim-box disabled-section" id="phase3">
+                    <div class="phase-badge">Phase 3: Bob Decrypts the Message</div>
+                    <h3>Step 3: Bob Decrypts the Message</h3>
+                    <p>The ciphertext <strong><em>C</em> = <span id="display-received-c">?</span></strong> travels across the untrusted network. Bob uses his secret private key <strong><em>d</em> = <span id="display-bob-d">?</span></strong> to recover the plaintext.</p>
+                    
+                    <div class="input-group">
+                        <label for="input-dec-m">Calculate <em>M</em> = <em>C</em><sup><span id="display-d-exp">7</span></sup> mod <span id="display-n-dec">33</span>: </label>
+                        <input type="number" id="input-dec-m" placeholder="Enter recovered M">
+                        <button id="btn-check-dec" class="action-btn blue-btn">Decrypt</button>
+                    </div>
+                    <p id="msg-dec" class="feedback-msg"></p>
+                </div>
+                
+                <!-- Phase 4: Attack Demonstration -->
+                <div class="sim-box disabled-section" id="phase4">
+                    <div class="phase-badge attack-badge">Phase 4: Chosen Ciphertext Attack</div>
+                    <h3 style="color: var(--accent-red);">&#9888; Step 4: The Vulnerability (Chosen Ciphertext Attack)</h3>
+                    <p>Standard RSA without cryptographic padding (textbook RSA) is <strong>multiplicatively homomorphic</strong>. Suppose Mallory (the eavesdropper) intercepted Alice's ciphertext <strong><em>C</em> = <span id="display-intercepted-c">?</span></strong>, but does not know the private key <em>d</em>.</p>
+                    <p>Mallory tricks Bob (acting as a decryption oracle) into decrypting a mathematically modified ("blinded") ciphertext <em>C'</em>.</p>
+
+                    <div class="attack-interactive-box">
+                        <div class="attack-step">
+                            <strong>Step 4.1: Pick a random blinding multiplier <em>R</em>:</strong>
+                            <div class="input-group">
+                                <label for="input-attack-r">Multiplier <em>R</em> (coprime to <span id="label-attack-n">n</span>):</label>
+                                <input type="number" id="input-attack-r" value="2" min="2">
+                                <button id="btn-execute-attack" class="action-btn blue-btn" style="background-color: var(--accent-red);">Launch Attack</button>
+                            </div>
+                        </div>
+
+                        <div id="attack-results" style="display: none; margin-top: 15px;">
+                            <div class="math-box attack-calc-details">
+                                <p><strong>1. Blinding by Mallory:</strong> Mallory computes <em>C'</em> = (<em>C</em> &times; <em>R</em><sup><em>e</em></sup>) mod <em>n</em> = (<span id="calc-c">?</span> &times; <span id="calc-r">?</span><sup><span id="calc-e">?</span></sup>) mod <span id="calc-n">?</span> = <strong id="calc-c-prime">?</strong>.</p>
+                                <p><strong>2. Bob Decrypts Blinded <em>C'</em>:</strong> Bob decrypts <em>C'</em> believing it is an unrelated test message: <em>M'</em> = (<em>C'</em>)<sup><em>d</em></sup> mod <em>n</em> = (<span id="calc-c-prime-2">?</span>)<sup><span id="calc-d">?</span></sup> mod <span id="calc-n-2">?</span> = <strong id="calc-m-prime">?</strong>.</p>
+                                <p>Notice that <em>M'</em> &equiv; (<em>M</em> &times; <em>R</em>) mod <em>n</em>!</p>
+                                <p><strong>3. Mallory Recovers Original Plaintext:</strong> Mallory computes the modular inverse <em>R</em><sup>&minus;1</sup> mod <em>n</em> = <strong id="calc-r-inv">?</strong>.</p>
+                                <p class="formula-line"><em>M</em> = (<em>M'</em> &times; <em>R</em><sup>&minus;1</sup>) mod <em>n</em> = (<span id="calc-m-prime-2">?</span> &times; <span id="calc-r-inv-2">?</span>) mod <span id="calc-n-3">?</span> = <span class="recovered-highlight" id="calc-recovered-m">?</span></p>
+                            </div>
+                            <div class="feedback-msg success" id="attack-success-msg">
+                                &#127881; <strong>Attack Successful!</strong> Mallory completely recovered Alice's secret message <em>M</em> without ever knowing Bob's private key <em>d</em>!
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 6: ASSIGNMENT -->
+            <div id="assignment" class="tab-content">
+                <h2>Assignment &amp; Self-Assessment</h2>
+                <p>Test your knowledge of the RSA algorithm, prime factorization, and ciphertext malleability by completing this short quiz.</p>
+
+                <form id="quiz-form">
+                    <div class="quiz-card">
+                        <h4>Q1: If primes <em>p</em> = 7 and <em>q</em> = 13 are used to create an RSA key pair, what is the value of Euler's totient &phi;(<em>n</em>)?</h4>
+                        <label class="quiz-option"><input type="radio" name="q1" value="A"> A) 91</label>
+                        <label class="quiz-option"><input type="radio" name="q1" value="B"> B) 72</label>
+                        <label class="quiz-option"><input type="radio" name="q1" value="C"> C) 84</label>
+                        <label class="quiz-option"><input type="radio" name="q1" value="D"> D) 60</label>
+                        <div class="quiz-feedback" id="feedback-q1"></div>
+                    </div>
+
+                    <div class="quiz-card">
+                        <h4>Q2: Why can the exponent <em>e</em> = 3 NOT be chosen as a valid public exponent when &phi;(<em>n</em>) = 36?</h4>
+                        <label class="quiz-option"><input type="radio" name="q2" value="A"> A) Because 3 is too small of an integer.</label>
+                        <label class="quiz-option"><input type="radio" name="q2" value="B"> B) Because gcd(3, 36) = 3 &ne; 1, so 3 is not coprime to &phi;(n).</label>
+                        <label class="quiz-option"><input type="radio" name="q2" value="C"> C) Because <em>e</em> must always be an even integer.</label>
+                        <label class="quiz-option"><input type="radio" name="q2" value="D"> D) Because the resulting private key <em>d</em> would be negative.</label>
+                        <div class="quiz-feedback" id="feedback-q2"></div>
+                    </div>
+
+                    <div class="quiz-card">
+                        <h4>Q3: What fundamental mathematical property of unpadded ("textbook") RSA enables the Chosen Ciphertext Attack?</h4>
+                        <label class="quiz-option"><input type="radio" name="q3" value="A"> A) Multiplicative homomorphism: (M<sub>1</sub><sup>e</sup>) &times; (M<sub>2</sub><sup>e</sup>) &equiv; (M<sub>1</sub> &times; M<sub>2</sub>)<sup>e</sup> mod n.</label>
+                        <label class="quiz-option"><input type="radio" name="q3" value="B"> B) Additive homomorphism: M<sub>1</sub><sup>e</sup> + M<sub>2</sub><sup>e</sup> &equiv; (M<sub>1</sub> + M<sub>2</sub>)<sup>e</sup> mod n.</label>
+                        <label class="quiz-option"><input type="radio" name="q3" value="C"> C) Bitwise permutation of ciphertext bits.</label>
+                        <label class="quiz-option"><input type="radio" name="q3" value="D"> D) The use of symmetric key expansion.</label>
+                        <div class="quiz-feedback" id="feedback-q3"></div>
+                    </div>
+
+                    <div class="quiz-card">
+                        <h4>Q4: How does modern cryptography prevent Chosen Ciphertext Attacks on RSA in practice?</h4>
+                        <label class="quiz-option"><input type="radio" name="q4" value="A"> A) By making prime numbers <em>p</em> and <em>q</em> equal to each other.</label>
+                        <label class="quiz-option"><input type="radio" name="q4" value="B"> B) By using Optimal Asymmetric Encryption Padding (OAEP) to destroy algebraic malleability.</label>
+                        <label class="quiz-option"><input type="radio" name="q4" value="C"> C) By only sending plaintexts that are powers of 2.</label>
+                        <label class="quiz-option"><input type="radio" name="q4" value="D"> D) By keeping the public exponent <em>e</em> secret.</label>
+                        <div class="quiz-feedback" id="feedback-q4"></div>
+                    </div>
+
+                    <div class="quiz-actions">
+                        <button type="button" id="btn-submit-quiz" class="action-btn blue-btn">Submit Assignment</button>
+                        <button type="button" id="btn-reset-quiz" class="action-btn">Reset Answers</button>
+                        <span id="quiz-score-badge" class="score-badge" style="display: none;"></span>
+                    </div>
+                </form>
+            </div>
+
+            <!-- TAB 7: REFERENCES -->
+            <div id="references" class="tab-content">
+                <h2>References &amp; Further Reading</h2>
+                <ul class="references-list">
+                    <li>
+                        <strong>Rivest, R. L., Shamir, A., &amp; Adleman, L. (1978).</strong> 
+                        <em>A Method for Obtaining Digital Signatures and Public-Key Cryptosystems.</em> 
+                        Communications of the ACM, 21(2), 120&ndash;126. 
+                        <a href="https://doi.org/10.1145/359340.359342" target="_blank" rel="noopener">doi:10.1145/359340.359342</a>
+                    </li>
+                    <li>
+                        <strong>RFC 8017 (2016).</strong> 
+                        <em>PKCS #1: RSA Cryptography Specifications Version 2.2.</em> 
+                        Internet Engineering Task Force (IETF). 
+                        <a href="https://datatracker.ietf.org/doc/html/rfc8017" target="_blank" rel="noopener">IETF RFC 8017</a>
+                    </li>
+                    <li>
+                        <strong>Stallings, W. (2017).</strong> 
+                        <em>Cryptography and Network Security: Principles and Practice</em> (7th ed.). 
+                        Pearson Education.
+                    </li>
+                    <li>
+                        <strong>Boneh, D. (1999).</strong> 
+                        <em>Twenty Years of Attacks on the RSA Cryptosystem.</em> 
+                        Notices of the American Mathematical Society (AMS), 46(2), 203&ndash;213.
+                    </li>
+                    <li>
+                        <strong>Bleichenbacher, D. (1998).</strong> 
+                        <em>Chosen Ciphertext Attacks Against Protocols Based on the RSA Encryption Standard PKCS #1.</em> 
+                        Advances in Cryptology &ndash; CRYPTO '98, Lecture Notes in Computer Science, vol 1462. Springer.
+                    </li>
+                    <li>
+                        <strong>Bellare, M., &amp; Rogaway, P. (1994).</strong> 
+                        <em>Optimal Asymmetric Encryption -- How to Encrypt with RSA.</em> 
+                        EUROCRYPT '94, Springer LNCS 950, pp. 92&ndash;111.
+                    </li>
+                </ul>
+            </div>
+
+            <!-- TAB 8: FEEDBACK -->
+            <div id="feedback" class="tab-content">
+                <h2>Experiment Feedback &amp; Evaluation</h2>
+                <p>We value your feedback on the RSA virtual lab simulation. Please let us know about your learning experience.</p>
+                
+                <form id="feedback-form" class="feedback-form">
+                    <div class="form-row">
+                        <label for="fb-name">Student Name:</label>
+                        <input type="text" id="fb-name" placeholder="Your Full Name" required>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="fb-email">Email Address:</label>
+                        <input type="email" id="fb-email" placeholder="student@university.edu" required>
+                    </div>
+
+                    <div class="form-row">
+                        <label>Overall Lab Experience Rating:</label>
+                        <div class="star-rating" id="star-rating">
+                            <span class="star" data-rating="1">&#9733;</span>
+                            <span class="star" data-rating="2">&#9733;</span>
+                            <span class="star" data-rating="3">&#9733;</span>
+                            <span class="star" data-rating="4">&#9733;</span>
+                            <span class="star" data-rating="5">&#9733;</span>
+                        </div>
+                        <input type="hidden" id="fb-rating" value="5">
+                    </div>
+
+                    <div class="form-row">
+                        <label for="fb-difficulty">Factoring Challenge Difficulty:</label>
+                        <select id="fb-difficulty" class="dropdown">
+                            <option value="easy">Too Easy</option>
+                            <option value="balanced" selected>Well Balanced / Pedagogical</option>
+                            <option value="hard">Challenging</option>
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="fb-comments">Comments and Suggestions for Improvement:</label>
+                        <textarea id="fb-comments" rows="4" placeholder="Share your suggestions, questions, or observations..."></textarea>
+                    </div>
+
+                    <button type="submit" class="action-btn blue-btn" id="btn-submit-feedback">Submit Feedback</button>
+                    <p id="msg-feedback-status" class="feedback-msg"></p>
+                </form>
+            </div>
+        </main>
+
+        <!-- SIDEBAR NAVIGATION MENU -->
+        <aside class="sidebar">
+            <div class="sidebar-filters">
+                <button class="filter-btn active" id="filter-all">All</button>
+                <button class="filter-btn" id="filter-interactive">Interactive</button>
+            </div>
+            <ul class="nav-menu" id="nav-menu">
+                <li class="nav-item" data-tab="aim"><span class="nav-icon">&#127919;</span> Aim</li>
+                <li class="nav-item" data-tab="theory"><span class="nav-icon">&#128214;</span> Theory</li>
+                <li class="nav-item" data-tab="objective"><span class="nav-icon">&#128203;</span> Objective</li>
+                <li class="nav-item" data-tab="procedure"><span class="nav-icon">&#128221;</span> Procedure</li>
+                <li class="nav-item active" data-tab="simulation"><span class="nav-icon">&#128187;</span> Simulation</li>
+                <li class="nav-item" data-tab="assignment"><span class="nav-icon">&#128221;</span> Assignment</li>
+                <li class="nav-item" data-tab="references"><span class="nav-icon">&#128218;</span> References</li>
+                <li class="nav-item" data-tab="feedback"><span class="nav-icon">&#128172;</span> Feedback</li>
+            </ul>
+        </aside>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
