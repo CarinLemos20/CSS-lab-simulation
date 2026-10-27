@@ -195,6 +195,7 @@ function initDynamicRSA(forceNew = false) {
     document.getElementById('display-intercepted-c').innerText = '?';
     document.getElementById('label-attack-n').innerText = currentN;
     document.getElementById('attack-results').style.display = 'none';
+    if (typeof cancelAttackAnimation === 'function') cancelAttackAnimation(true);
 
     // Hint for d calculation
     const kVal = (currentE * currentD - 1) / currentPhi;
@@ -360,52 +361,315 @@ document.getElementById('btn-check-dec').addEventListener('click', () => {
     }
 });
 
-// --- Step 4: Chosen Ciphertext Attack Execution ---
-document.getElementById('btn-execute-attack').addEventListener('click', () => {
-    let R = parseInt(document.getElementById('input-attack-r').value);
+// --- Step 4: Chosen Ciphertext Attack Execution (Animated) ---
 
-    if (isNaN(R) || R < 2) {
-        alert('Please choose a valid integer multiplier R \u2265 2.');
+// Animation state
+let animRunId = 0;          // increments to cancel any running animation
+let animRunning = false;
+let lastAttack = null;      // values from the most recent launch (used by Replay)
+let packetAnchor = 'alice'; // which actor the packet currently sits under
+
+const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+class AnimCancelled extends Error {}
+
+function animSpeed() {
+    const v = parseFloat(document.getElementById('anim-speed').value) || 1;
+    return reduceMotion ? v * 0.5 : v;
+}
+
+// Cancellable sleep scaled by the selected speed
+function wait(ms, runId) {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            if (runId !== animRunId) reject(new AnimCancelled());
+            else resolve();
+        }, ms * animSpeed());
+    });
+}
+
+// Horizontal centre of an actor's avatar, relative to the lane
+function actorX(actorKey) {
+    const lane = document.getElementById('anim-lane');
+    const avatar = document.querySelector(`#actor-${actorKey} .actor-avatar`);
+    const laneRect = lane.getBoundingClientRect();
+    const avRect = avatar.getBoundingClientRect();
+    return avRect.left + avRect.width / 2 - laneRect.left;
+}
+
+function placePacket(actorKey, animate) {
+    const packet = document.getElementById('anim-packet');
+    const x = actorX(actorKey) - packet.offsetWidth / 2;
+    packet.style.transition = animate ? `transform ${1.1 * animSpeed()}s cubic-bezier(.55,.05,.35,1)` : 'none';
+    packet.style.transform = `translateX(${x}px)`;
+    packetAnchor = actorKey;
+}
+
+async function movePacket(actorKey, runId) {
+    placePacket(actorKey, true);
+    await wait(1150, runId);
+}
+
+// Flip the packet and change its contents at the half-way point
+async function morphPacket(label, value, kind, runId) {
+    const packet = document.getElementById('anim-packet');
+    packet.classList.remove('morph');
+    void packet.offsetWidth; // restart CSS animation
+    packet.style.setProperty('--morph-dur', `${0.6 * animSpeed()}s`);
+    packet.classList.add('morph');
+    await wait(300, runId);
+    document.getElementById('packet-label').innerHTML = label;
+    document.getElementById('packet-val').innerText = value;
+    packet.className = 'packet morph ' + (kind || '');
+    await wait(400, runId);
+}
+
+function setCaption(html) {
+    const cap = document.getElementById('anim-caption');
+    cap.classList.remove('caption-in');
+    void cap.offsetWidth;
+    cap.innerHTML = html;
+    cap.classList.add('caption-in');
+}
+
+function setStep(n) {
+    document.querySelectorAll('#anim-steps li').forEach(li => {
+        const s = parseInt(li.dataset.step);
+        li.classList.toggle('active', s === n);
+        li.classList.toggle('done', s < n);
+    });
+}
+
+function focusActor(key) {
+    ['alice', 'mallory', 'bob'].forEach(k => {
+        document.getElementById(`actor-${k}`).classList.toggle('focus', k === key);
+    });
+}
+
+function bubbleLine(actorKey, html, cls) {
+    const bubble = document.getElementById(`bubble-${actorKey}`);
+    const line = document.createElement('div');
+    line.className = 'bubble-line ' + (cls || '');
+    line.innerHTML = html;
+    bubble.appendChild(line);
+    bubble.classList.add('visible');
+}
+
+function revealCalc(upTo) {
+    document.querySelectorAll('#attack-results .calc-line').forEach(el => {
+        if (parseInt(el.dataset.reveal) <= upTo) el.classList.add('revealed');
+    });
+}
+
+function resetAnimationStage() {
+    ['alice', 'mallory', 'bob'].forEach(k => {
+        const b = document.getElementById(`bubble-${k}`);
+        b.innerHTML = '';
+        b.classList.remove('visible');
+        document.getElementById(`actor-${k}`).classList.remove('focus', 'win');
+    });
+    const packet = document.getElementById('anim-packet');
+    packet.className = 'packet';
+    document.getElementById('packet-label').innerHTML = 'C';
+    document.getElementById('packet-val').innerText = '?';
+    document.querySelectorAll('#attack-results .calc-line').forEach(el => el.classList.remove('revealed'));
+    setStep(0);
+}
+
+// Stop any running animation and hide the stage (used when the modulus is regenerated)
+function cancelAttackAnimation(hide) {
+    animRunId++;
+    animRunning = false;
+    lastAttack = null;
+    document.getElementById('btn-execute-attack').disabled = false;
+    if (hide) {
+        document.getElementById('attack-anim').style.display = 'none';
+        document.getElementById('attack-results').style.display = 'none';
+    }
+}
+
+function fillCalcDetails(a) {
+    document.getElementById('calc-c').innerText = a.C;
+    document.getElementById('calc-r').innerText = a.R;
+    document.getElementById('calc-e').innerText = a.e;
+    document.getElementById('calc-n').innerText = a.n;
+    document.getElementById('calc-c-prime').innerText = a.C_prime;
+
+    document.getElementById('calc-c-prime-2').innerText = a.C_prime;
+    document.getElementById('calc-d').innerText = a.d;
+    document.getElementById('calc-n-2').innerText = a.n;
+    document.getElementById('calc-m-prime').innerText = a.M_prime;
+
+    document.getElementById('calc-r-inv').innerText = a.R_inv;
+    document.getElementById('calc-m-prime-2').innerText = a.M_prime;
+    document.getElementById('calc-r-inv-2').innerText = a.R_inv;
+    document.getElementById('calc-n-3').innerText = a.n;
+    document.getElementById('calc-recovered-m').innerText = a.recoveredM;
+}
+
+// Final frame, shown instantly (Skip) or at the end of the animation
+function showFinalFrame(a) {
+    resetAnimationStage();
+    bubbleLine('alice', `Secret <em>M</em> = <b>${a.M}</b>`);
+    bubbleLine('mallory', `<em>R</em> = ${a.R}, <em>R</em><sup><em>e</em></sup> mod <em>n</em> = ${a.R_exp_e}`);
+    bubbleLine('mallory', `<em>R</em><sup>&minus;1</sup> mod <em>n</em> = ${a.R_inv}`);
+    bubbleLine('mallory', `<em>M</em> = ${a.M_prime} &times; ${a.R_inv} mod ${a.n} = <b>${a.recoveredM}</b>`, 'win-line');
+    bubbleLine('bob', `(${a.C_prime})<sup>${a.d}</sup> mod ${a.n} = ${a.M_prime}`);
+    document.getElementById('packet-label').innerHTML = 'M';
+    document.getElementById('packet-val').innerText = a.recoveredM;
+    document.getElementById('anim-packet').className = 'packet plain win';
+    placePacket('mallory', false);
+    document.getElementById('actor-mallory').classList.add('win');
+    setStep(6);
+    revealCalc(6);
+    setCaption(`&#127881; Mallory recovered <b>M = ${a.recoveredM}</b> &mdash; identical to Alice's secret (${a.M}) &mdash; without ever learning <em>d</em>.`);
+}
+
+async function runAttackAnimation(a) {
+    const runId = ++animRunId;
+    animRunning = true;
+    const launchBtn = document.getElementById('btn-execute-attack');
+    const replayBtn = document.getElementById('btn-anim-replay');
+    const skipBtn = document.getElementById('btn-anim-skip');
+    launchBtn.disabled = true;
+    replayBtn.disabled = true;
+    skipBtn.disabled = false;
+
+    document.getElementById('attack-anim').style.display = 'block';
+    document.getElementById('attack-results').style.display = 'block';
+    fillCalcDetails(a);
+    resetAnimationStage();
+
+    // Start: packet holding C sits with Alice
+    document.getElementById('packet-val').innerText = a.C;
+    placePacket('alice', false);
+    document.getElementById('attack-anim').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+
+    try {
+        // STEP 1 — Interception
+        setStep(1);
+        focusActor('alice');
+        bubbleLine('alice', `Secret <em>M</em> = <b>${a.M}</b>`);
+        bubbleLine('alice', `<em>C</em> = ${a.M}<sup>${a.e}</sup> mod ${a.n} = ${a.C}`);
+        setCaption(`Alice encrypts her secret and sends <b>C = ${a.C}</b> to Bob over the open network&hellip;`);
+        await wait(1400, runId);
+        focusActor('mallory');
+        await movePacket('mallory', runId);
+        document.getElementById('anim-packet').classList.add('intercepted');
+        setCaption(`&#9888; Mallory sits on the wire and <b>intercepts C = ${a.C}</b>. She can't decrypt it &mdash; she doesn't know <em>d</em>.`);
+        await wait(1800, runId);
+
+        // STEP 2 — Blinding
+        setStep(2);
+        setCaption(`Mallory picks a blinding factor <b>R = ${a.R}</b> and raises it to Bob's <em>public</em> exponent <em>e</em> = ${a.e}.`);
+        bubbleLine('mallory', `<em>R</em> = ${a.R}, <em>R</em><sup><em>e</em></sup> mod <em>n</em> = ${a.R_exp_e}`);
+        await wait(1600, runId);
+        bubbleLine('mallory', `<em>C'</em> = ${a.C} &times; ${a.R_exp_e} mod ${a.n} = <b>${a.C_prime}</b>`);
+        await morphPacket("C'", a.C_prime, 'blinded', runId);
+        revealCalc(2);
+        setCaption(`The ciphertext is now disguised as <b>C' = ${a.C_prime}</b>. To Bob it looks like a random, unrelated message.`);
+        await wait(1800, runId);
+
+        // STEP 3 — Bob decrypts
+        setStep(3);
+        focusActor('bob');
+        setCaption(`Mallory submits <b>C'</b> to Bob's decryption service (the &ldquo;oracle&rdquo;)&hellip;`);
+        await movePacket('bob', runId);
+        bubbleLine('bob', `&#128273; <em>d</em> = ${a.d}`);
+        bubbleLine('bob', `(${a.C_prime})<sup>${a.d}</sup> mod ${a.n} = <b>${a.M_prime}</b>`);
+        setCaption(`Bob decrypts with his private key: <b>M' = ${a.M_prime}</b>. Meaningless to him &mdash; but secretly <em>M'</em> = <em>M</em> &times; <em>R</em> mod <em>n</em> = ${a.M} &times; ${a.R} mod ${a.n}.`);
+        await morphPacket("M'", a.M_prime, 'plain', runId);
+        revealCalc(3);
+        await wait(2200, runId);
+
+        // STEP 4 — Result returned
+        setStep(4);
+        revealCalc(4);
+        focusActor('mallory');
+        setCaption(`Bob hands <b>M' = ${a.M_prime}</b> back. He never noticed it was Alice's message in disguise.`);
+        await movePacket('mallory', runId);
+        await wait(1200, runId);
+
+        // STEP 5 — Unblinding
+        setStep(5);
+        bubbleLine('mallory', `<em>R</em><sup>&minus;1</sup> mod ${a.n} = ${a.R_inv}`);
+        setCaption(`Mallory removes the blinding by multiplying by <b>R<sup>&minus;1</sup> mod n = ${a.R_inv}</b>&hellip;`);
+        await wait(1600, runId);
+        bubbleLine('mallory', `<em>M</em> = ${a.M_prime} &times; ${a.R_inv} mod ${a.n} = <b>${a.recoveredM}</b>`, 'win-line');
+        await morphPacket('M', a.recoveredM, 'plain win', runId);
+        revealCalc(5);
+        await wait(900, runId);
+
+        // Done
+        setStep(6);
+        focusActor(null);
+        document.getElementById('actor-mallory').classList.add('win');
+        revealCalc(6);
+        setCaption(`&#127881; Mallory recovered <b>M = ${a.recoveredM}</b> &mdash; identical to Alice's secret (${a.M}) &mdash; without ever learning <em>d</em>.`);
+    } catch (err) {
+        if (!(err instanceof AnimCancelled)) throw err;
+        return; // a newer run (or Skip / reset) took over
+    }
+
+    animRunning = false;
+    launchBtn.disabled = false;
+    replayBtn.disabled = false;
+    skipBtn.disabled = true;
+}
+
+document.getElementById('btn-execute-attack').addEventListener('click', () => {
+    const R = parseInt(document.getElementById('input-attack-r').value);
+
+    if (correctC === null || userM === null) {
+        alert('Complete Phases 2 and 3 first so there is a ciphertext to attack.');
+        return;
+    }
+
+    if (isNaN(R) || R < 2 || R >= currentN) {
+        alert(`Please choose an integer multiplier R with 2 ≤ R < ${currentN}.`);
         return;
     }
 
     if (gcd(R, currentN) !== 1) {
-        alert(`Multiplier R (${R}) must be coprime to modulus n (${currentN}). Since gcd(${R}, ${currentN}) \u2260 1, choose a different R.`);
+        alert(`Multiplier R (${R}) must be coprime to modulus n (${currentN}). Since gcd(${R}, ${currentN}) ≠ 1, choose a different R.`);
         return;
     }
 
     // Attacker Mallory computes blinded ciphertext: C' = (C * R^e) mod n
     const R_exp_e = modExp(R, currentE, currentN);
     const C_prime = (correctC * R_exp_e) % currentN;
-
     // Bob (Oracle) decrypts blinded C': M' = (C')^d mod n = (M * R) mod n
     const M_prime = modExp(C_prime, currentD, currentN);
-
-    // Attacker computes modular inverse of R modulo n: R^-1 mod n
+    // Attacker computes R^-1 mod n and recovers M = (M' * R^-1) mod n
     const R_inv = modInverse(R, currentN);
-
-    // Attacker recovers original plaintext: M = (M' * R^-1) mod n
     const recoveredM = (M_prime * R_inv) % currentN;
 
-    // Populate attack calculation details in UI
-    document.getElementById('calc-c').innerText = correctC;
-    document.getElementById('calc-r').innerText = R;
-    document.getElementById('calc-e').innerText = currentE;
-    document.getElementById('calc-n').innerText = currentN;
-    document.getElementById('calc-c-prime').innerText = C_prime;
+    lastAttack = {
+        M: userM, C: correctC, R, e: currentE, d: currentD, n: currentN,
+        R_exp_e, C_prime, M_prime, R_inv, recoveredM
+    };
+    runAttackAnimation(lastAttack);
+});
 
-    document.getElementById('calc-c-prime-2').innerText = C_prime;
-    document.getElementById('calc-d').innerText = currentD;
-    document.getElementById('calc-n-2').innerText = currentN;
-    document.getElementById('calc-m-prime').innerText = M_prime;
+document.getElementById('btn-anim-replay').addEventListener('click', () => {
+    if (lastAttack) runAttackAnimation(lastAttack);
+});
 
-    document.getElementById('calc-r-inv').innerText = R_inv;
-    document.getElementById('calc-m-prime-2').innerText = M_prime;
-    document.getElementById('calc-r-inv-2').innerText = R_inv;
-    document.getElementById('calc-n-3').innerText = currentN;
-    document.getElementById('calc-recovered-m').innerText = recoveredM;
+document.getElementById('btn-anim-skip').addEventListener('click', () => {
+    if (!lastAttack || !animRunning) return;
+    animRunId++; // cancels the running sequence
+    animRunning = false;
+    showFinalFrame(lastAttack);
+    document.getElementById('btn-execute-attack').disabled = false;
+    document.getElementById('btn-anim-replay').disabled = false;
+    document.getElementById('btn-anim-skip').disabled = true;
+});
 
-    document.getElementById('attack-results').style.display = 'block';
+// Keep the packet aligned with its actor when the layout changes
+window.addEventListener('resize', () => {
+    if (document.getElementById('attack-anim').style.display !== 'none') {
+        placePacket(packetAnchor, false);
+    }
 });
 
 // ==========================================

@@ -322,15 +322,69 @@
                             </div>
                         </div>
 
+                        <!-- Animated attack walkthrough -->
+                        <div id="attack-anim" class="attack-anim" style="display: none;" aria-live="polite">
+                            <div class="anim-topbar">
+                                <ol class="anim-steps" id="anim-steps">
+                                    <li data-step="1">Intercept</li>
+                                    <li data-step="2">Blind</li>
+                                    <li data-step="3">Oracle decrypts</li>
+                                    <li data-step="4">Leak back</li>
+                                    <li data-step="5">Unblind</li>
+                                </ol>
+                                <div class="anim-controls">
+                                    <select id="anim-speed" class="dropdown" title="Animation speed">
+                                        <option value="1.6">Slow</option>
+                                        <option value="1" selected>Normal</option>
+                                        <option value="0.5">Fast</option>
+                                    </select>
+                                    <button type="button" id="btn-anim-skip" class="action-btn">&#9197; Skip</button>
+                                    <button type="button" id="btn-anim-replay" class="action-btn" disabled>&#8635; Replay</button>
+                                </div>
+                            </div>
+
+                            <div class="anim-stage" id="anim-stage">
+                                <div class="actors-row">
+                                    <div class="actor" id="actor-alice">
+                                        <div class="actor-bubble" id="bubble-alice"></div>
+                                        <div class="actor-avatar">&#128105;</div>
+                                        <div class="actor-name">Alice</div>
+                                        <div class="actor-role">Sender</div>
+                                    </div>
+                                    <div class="actor actor-mallory" id="actor-mallory">
+                                        <div class="actor-bubble" id="bubble-mallory"></div>
+                                        <div class="actor-avatar">&#128520;</div>
+                                        <div class="actor-name">Mallory</div>
+                                        <div class="actor-role">Attacker (no <em>d</em>)</div>
+                                    </div>
+                                    <div class="actor actor-bob" id="actor-bob">
+                                        <div class="actor-bubble" id="bubble-bob"></div>
+                                        <div class="actor-avatar">&#128104;</div>
+                                        <div class="actor-name">Bob</div>
+                                        <div class="actor-role">Decryption oracle &#128273;</div>
+                                    </div>
+                                </div>
+                                <div class="anim-lane" id="anim-lane">
+                                    <div class="lane-line"></div>
+                                    <div class="packet" id="anim-packet">
+                                        <span class="packet-label" id="packet-label">C</span>
+                                        <span class="packet-val" id="packet-val">?</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="anim-caption" id="anim-caption">Get ready&hellip;</div>
+                        </div>
+
                         <div id="attack-results" style="display: none; margin-top: 15px;">
                             <div class="math-box attack-calc-details">
-                                <p><strong>1. Blinding by Mallory:</strong> Mallory computes <em>C'</em> = (<em>C</em> &times; <em>R</em><sup><em>e</em></sup>) mod <em>n</em> = (<span id="calc-c">?</span> &times; <span id="calc-r">?</span><sup><span id="calc-e">?</span></sup>) mod <span id="calc-n">?</span> = <strong id="calc-c-prime">?</strong>.</p>
-                                <p><strong>2. Bob Decrypts Blinded <em>C'</em>:</strong> Bob decrypts <em>C'</em> believing it is an unrelated test message: <em>M'</em> = (<em>C'</em>)<sup><em>d</em></sup> mod <em>n</em> = (<span id="calc-c-prime-2">?</span>)<sup><span id="calc-d">?</span></sup> mod <span id="calc-n-2">?</span> = <strong id="calc-m-prime">?</strong>.</p>
-                                <p>Notice that <em>M'</em> &equiv; (<em>M</em> &times; <em>R</em>) mod <em>n</em>!</p>
-                                <p><strong>3. Mallory Recovers Original Plaintext:</strong> Mallory computes the modular inverse <em>R</em><sup>&minus;1</sup> mod <em>n</em> = <strong id="calc-r-inv">?</strong>.</p>
-                                <p class="formula-line"><em>M</em> = (<em>M'</em> &times; <em>R</em><sup>&minus;1</sup>) mod <em>n</em> = (<span id="calc-m-prime-2">?</span> &times; <span id="calc-r-inv-2">?</span>) mod <span id="calc-n-3">?</span> = <span class="recovered-highlight" id="calc-recovered-m">?</span></p>
+                                <p class="calc-line" data-reveal="2"><strong>1. Blinding by Mallory:</strong> Mallory computes <em>C'</em> = (<em>C</em> &times; <em>R</em><sup><em>e</em></sup>) mod <em>n</em> = (<span id="calc-c">?</span> &times; <span id="calc-r">?</span><sup><span id="calc-e">?</span></sup>) mod <span id="calc-n">?</span> = <strong id="calc-c-prime">?</strong>.</p>
+                                <p class="calc-line" data-reveal="3"><strong>2. Bob Decrypts Blinded <em>C'</em>:</strong> Bob decrypts <em>C'</em> believing it is an unrelated test message: <em>M'</em> = (<em>C'</em>)<sup><em>d</em></sup> mod <em>n</em> = (<span id="calc-c-prime-2">?</span>)<sup><span id="calc-d">?</span></sup> mod <span id="calc-n-2">?</span> = <strong id="calc-m-prime">?</strong>.</p>
+                                <p class="calc-line" data-reveal="4">Notice that <em>M'</em> &equiv; (<em>M</em> &times; <em>R</em>) mod <em>n</em>!</p>
+                                <p class="calc-line" data-reveal="5"><strong>3. Mallory Recovers Original Plaintext:</strong> Mallory computes the modular inverse <em>R</em><sup>&minus;1</sup> mod <em>n</em> = <strong id="calc-r-inv">?</strong>.</p>
+                                <p class="formula-line calc-line" data-reveal="5"><em>M</em> = (<em>M'</em> &times; <em>R</em><sup>&minus;1</sup>) mod <em>n</em> = (<span id="calc-m-prime-2">?</span> &times; <span id="calc-r-inv-2">?</span>) mod <span id="calc-n-3">?</span> = <span class="recovered-highlight" id="calc-recovered-m">?</span></p>
                             </div>
-                            <div class="feedback-msg success" id="attack-success-msg">
+                            <div class="feedback-msg success calc-line" data-reveal="6" id="attack-success-msg">
                                 &#127881; <strong>Attack Successful!</strong> Mallory completely recovered Alice's secret message <em>M</em> without ever knowing Bob's private key <em>d</em>!
                             </div>
                         </div>
